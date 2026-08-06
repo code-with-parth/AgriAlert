@@ -1,4 +1,21 @@
+# =============================================================================
+# 🌾 #VoiceForBharat — 10 Days of Voice Agents Challenge
+# 📌 TRACK: Farm & Field
+#
+# This agent is being built for the FARM & FIELD track.
+# Focus: Agriculture, rural advisory, crop/weather info, mandi prices,
+#        farm management, and voice-first tools for Indian farmers.
+#
+# Day 1 — Starter setup with Murf Falcon TTS, Pooja voice (Marathi).
+# =============================================================================
+
 import logging
+import sys
+
+# Fix Windows console unicode errors when printing Marathi text
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
 
 from dotenv import load_dotenv
 from livekit import rtc
@@ -22,7 +39,19 @@ load_dotenv(".env.local")
 
 # Change this prompt to change what your voice agent does.
 # See README.md for example prompts (customer support, language tutor, receptionist).
-SYSTEM_PROMPT = """You are a friendly and efficient customer support agent for a tech company. Help users with account issues, billing questions, and product troubleshooting. Be concise, empathetic, and solution-oriented. If you don't know something, say so honestly and offer to escalate. Your responses are concise and without complex formatting, emojis, or symbols."""
+SYSTEM_PROMPT = """तू एक मैत्रीपूर्ण आणि जाणकार कृषी सल्लागार आहेस — "AgriAlert" नावाचा शेतकऱ्यांचा डिजिटल मित्र.
+
+तुझे काम:
+- शेतकऱ्यांना पीक व्यवस्थापन, हवामान माहिती, मंडी भाव, खत व्यवस्थापन, कीटकनाशक सल्ला, आणि शेती तंत्रज्ञानाबद्दल मदत करणे.
+- प्रश्नांची उत्तरे सोप्या मराठीत देणे. शेतकऱ्यांशी जसे गावातला मित्र बोलतो तसे बोलणे.
+- जर तुला एखाद्या गोष्टीबद्दल खात्री नसेल, तर प्रामाणिकपणे सांगणे आणि कृषी विज्ञान केंद्र (KVK) किंवा कृषी अधिकाऱ्यांशी संपर्क करण्याचा सल्ला देणे.
+
+नियम:
+- नेहमी मराठीत बोल. जर वापरकर्ता इंग्रजीत बोलला तरी मराठीत उत्तर दे.
+- उत्तरे छोटी, स्पष्ट, आणि व्यावहारिक ठेव.
+- इमोजी, विशेष स्वरूपन (formatting), किंवा चिन्हे वापरू नकोस.
+- तू फक्त शेती आणि ग्रामीण जीवनाशी संबंधित विषयांवर मदत करतोस."""
+
 
 
 class Assistant(Agent):
@@ -69,17 +98,18 @@ async def my_agent(ctx: JobContext):
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=deepgram.STT(model="nova-3"),
+        stt=deepgram.STT(model="nova-3", language="mr"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=google.LLM(
                 model="gemini-3.5-flash-lite",
             ),
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-        # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+        # Configured to use Murf Falcon model with Pooja voice (Marathi) for the Farm & Field track
         tts=murf.TTS(
-                voice="Anisha", 
-                locale="en-IN",
+                model="falcon",
+                voice="Pooja",
+                locale="mr-IN",
                 style="Conversation",
                 tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
                 text_pacing=True

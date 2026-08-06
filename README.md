@@ -1,6 +1,6 @@
-# Voice Agent Starter — Powered by Murf Falcon
+# AgriAlert — Voice Agent Starter Powered by Murf Falcon
 
-Build a production voice AI agent in 5 minutes. Powered by the fastest TTS on the market - swap the system prompt to build anything from customer support to language tutors.
+AgriAlert is a digital voice AI assistant built for the Farm & Field track. It helps Indian farmers with crop management, weather information, mandi prices, and agricultural advisory using real-time voice interactions in Marathi. Powered by Murf Falcon and LiveKit.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Murf Falcon](https://img.shields.io/badge/TTS-Murf%20Falcon-6366F1)](https://murf.ai/api/docs/text-to-speech/streaming) [![LiveKit](https://img.shields.io/badge/Transport-LiveKit-002cf2)](https://docs.livekit.io) [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 

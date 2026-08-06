@@ -33,8 +33,8 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Murf AI',
-  pageTitle: 'Voice Agent Starter',
+  companyName: 'AgriAlert',
+  pageTitle: 'AgriAlert - Voice Agent Starter',
   pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
 
   supportsChatInput: true,
@@ -43,26 +43,16 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   isPreConnectBufferEnabled: true,
 
   logo: '/murf-logo.svg',
-  accent: '#6366F1',
+  accent: '#15803d',
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#818cf8',
+  accentDark: '#22c55e',
   startButtonText: 'Start talking',
 
   // optional: audio visualization configuration
-  // audioVisualizerType: 'bar',
-  // audioVisualizerColor: '#002cf2',
-  // audioVisualizerColorDark: '#1fd5f9',
-  // audioVisualizerColorShift: 0.3,
-  // audioVisualizerBarCount: 5,
-  // audioVisualizerType: 'radial',
-  // audioVisualizerRadialBarCount: 24,
-  // audioVisualizerRadialRadius: 100,
-  // audioVisualizerType: 'grid',
-  // audioVisualizerGridRowCount: 25,
-  // audioVisualizerGridColumnCount: 25,
-  // audioVisualizerType: 'wave',
-  // audioVisualizerWaveLineWidth: 3,
-  // audioVisualizerType: 'aura',
+  audioVisualizerType: 'wave',
+  audioVisualizerColor: '#15803d',
+  audioVisualizerColorDark: '#22c55e',
+  audioVisualizerWaveLineWidth: 3,
 
   // agent dispatch configuration
   agentName: process.env.AGENT_NAME ?? undefined,
