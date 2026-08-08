@@ -4,78 +4,93 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ── AgriAlert Earth/Agriculture Light Theme ── */
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --background: oklch(0.97 0.008 100);       /* warm cream */
+  --foreground: oklch(0.20 0.02 150);         /* deep forest text */
+  --card: oklch(0.98 0.006 100);              /* slightly lighter cream */
+  --card-foreground: oklch(0.20 0.02 150);
+  --popover: oklch(0.99 0.004 100);
+  --popover-foreground: oklch(0.20 0.02 150);
+  --primary: oklch(0.35 0.12 145);            /* deep green */
+  --primary-foreground: oklch(0.98 0.005 100);
+  --secondary: oklch(0.92 0.02 85);           /* warm wheat */
+  --secondary-foreground: oklch(0.25 0.04 145);
+  --muted: oklch(0.94 0.015 90);              /* soft sand */
+  --muted-foreground: oklch(0.50 0.03 100);
+  --accent: oklch(0.90 0.04 85);              /* golden hay */
+  --accent-foreground: oklch(0.22 0.04 145);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.88 0.02 95);
+  --input: oklch(0.90 0.015 95);
+  --ring: oklch(0.45 0.1 145);                /* green focus ring */
+  --chart-1: oklch(0.45 0.15 145);            /* green */
+  --chart-2: oklch(0.60 0.12 85);             /* amber */
+  --chart-3: oklch(0.50 0.08 50);             /* brown */
+  --chart-4: oklch(0.70 0.14 100);            /* golden */
+  --chart-5: oklch(0.55 0.10 160);            /* teal */
+  --sidebar: oklch(0.96 0.01 100);
+  --sidebar-foreground: oklch(0.20 0.02 150);
+  --sidebar-primary: oklch(0.35 0.12 145);
+  --sidebar-primary-foreground: oklch(0.98 0.005 100);
+  --sidebar-accent: oklch(0.92 0.02 85);
+  --sidebar-accent-foreground: oklch(0.22 0.04 145);
+  --sidebar-border: oklch(0.88 0.02 95);
+  --sidebar-ring: oklch(0.45 0.1 145);
+
+  /* AgriAlert custom tokens */
+  --agri-green: #1B5E20;
+  --agri-green-light: #4CAF50;
+  --agri-gold: #F9A825;
+  --agri-brown: #5D4037;
+  --agri-cream: #FFF8E1;
 }
 
+/* ── AgriAlert Dark Mode ── */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.269 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.371 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.16 0.02 150);         /* deep forest night */
+  --foreground: oklch(0.93 0.01 100);          /* warm light text */
+  --card: oklch(0.20 0.025 148);
+  --card-foreground: oklch(0.93 0.01 100);
+  --popover: oklch(0.22 0.02 148);
+  --popover-foreground: oklch(0.93 0.01 100);
+  --primary: oklch(0.65 0.17 145);             /* bright green */
+  --primary-foreground: oklch(0.15 0.02 150);
+  --secondary: oklch(0.25 0.025 100);          /* dark brown */
+  --secondary-foreground: oklch(0.90 0.015 100);
+  --muted: oklch(0.25 0.02 140);
+  --muted-foreground: oklch(0.65 0.03 100);
+  --accent: oklch(0.32 0.04 100);              /* warm dark accent */
+  --accent-foreground: oklch(0.93 0.01 100);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.55 0.12 145);
+  --chart-1: oklch(0.55 0.17 145);
+  --chart-2: oklch(0.65 0.14 85);
+  --chart-3: oklch(0.70 0.12 100);
+  --chart-4: oklch(0.60 0.20 145);
+  --chart-5: oklch(0.50 0.15 160);
+  --sidebar: oklch(0.18 0.02 148);
+  --sidebar-foreground: oklch(0.93 0.01 100);
+  --sidebar-primary: oklch(0.55 0.17 145);
+  --sidebar-primary-foreground: oklch(0.93 0.01 100);
+  --sidebar-accent: oklch(0.25 0.025 100);
+  --sidebar-accent-foreground: oklch(0.90 0.015 100);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.439 0 0);
+  --sidebar-ring: oklch(0.45 0.10 145);
+
+  --agri-green: #4CAF50;
+  --agri-green-light: #81C784;
+  --agri-gold: #FFD54F;
+  --agri-brown: #8D6E63;
+  --agri-cream: #2E2E2E;
 }
 
 @theme inline {
   --font-sans:
-    var(--font-public-sans), ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    var(--font-public-sans), 'Noto Sans Devanagari', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
   --font-mono:
     var(--font-commit-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
@@ -121,4 +136,148 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ── AgriAlert Custom Animations ── */
+
+/* Pulsing mic indicator for Listening state */
+@keyframes mic-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.7;
+  }
+}
+
+.agri-mic-pulse {
+  animation: mic-pulse 1.5s ease-in-out infinite;
+}
+
+/* Speaker wave animation for Speaking state */
+@keyframes speaker-wave {
+  0%, 100% {
+    transform: scaleY(1);
+  }
+  25% {
+    transform: scaleY(1.4);
+  }
+  50% {
+    transform: scaleY(0.8);
+  }
+  75% {
+    transform: scaleY(1.3);
+  }
+}
+
+.agri-speaker-bar {
+  animation: speaker-wave 0.8s ease-in-out infinite;
+  transform-origin: bottom;
+}
+.agri-speaker-bar:nth-child(2) { animation-delay: 0.1s; }
+.agri-speaker-bar:nth-child(3) { animation-delay: 0.2s; }
+.agri-speaker-bar:nth-child(4) { animation-delay: 0.3s; }
+
+/* Connecting spinner */
+@keyframes agri-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.agri-spinner {
+  animation: agri-spin 1s linear infinite;
+  border: 3px solid var(--agri-green-light, #4CAF50);
+  border-top-color: transparent;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+}
+
+/* State badge styling */
+.agri-state-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  backdrop-filter: blur(8px);
+  transition: all 0.3s ease;
+}
+
+.agri-state-badge--ready {
+  background: oklch(0.45 0.15 145 / 15%);
+  color: var(--agri-green);
+  border: 1px solid oklch(0.45 0.15 145 / 25%);
+}
+
+.agri-state-badge--connecting {
+  background: oklch(0.70 0.14 85 / 15%);
+  color: var(--agri-gold);
+  border: 1px solid oklch(0.70 0.14 85 / 25%);
+}
+
+.agri-state-badge--listening {
+  background: oklch(0.45 0.15 145 / 15%);
+  color: var(--agri-green);
+  border: 1px solid oklch(0.45 0.15 145 / 25%);
+}
+
+.agri-state-badge--speaking {
+  background: oklch(0.50 0.08 50 / 15%);
+  color: var(--agri-brown);
+  border: 1px solid oklch(0.50 0.08 50 / 25%);
+}
+
+.agri-state-badge--ended {
+  background: oklch(0.50 0.03 100 / 15%);
+  color: var(--muted-foreground);
+  border: 1px solid oklch(0.50 0.03 100 / 25%);
+}
+
+/* Mic error banner */
+.agri-mic-error-banner {
+  background: oklch(0.577 0.245 27.325 / 12%);
+  border: 1px solid oklch(0.577 0.245 27.325 / 30%);
+  color: oklch(0.45 0.2 27);
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  backdrop-filter: blur(8px);
+}
+
+.dark .agri-mic-error-banner {
+  background: oklch(0.704 0.191 22.216 / 15%);
+  border-color: oklch(0.704 0.191 22.216 / 30%);
+  color: oklch(0.80 0.15 22);
+}
+
+/* Transcript container */
+.agri-transcript {
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: oklch(from var(--background) l c h / 80%);
+  backdrop-filter: blur(12px);
+}
+
+/* Smooth scroll for transcript */
+.agri-transcript-scroll {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: var(--agri-green-light, #4CAF50) transparent;
+}
+
+.agri-transcript-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.agri-transcript-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agri-transcript-scroll::-webkit-scrollbar-thumb {
+  background: var(--agri-green-light, #4CAF50);
+  border-radius: 2px;
 }

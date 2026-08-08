@@ -191,7 +191,7 @@ async def my_agent(ctx: JobContext):
     await ctx.connect()
 
     # Speak the welcome greeting aloud once connected
-    session.say(WELCOME_MESSAGE)
+    await session.say(WELCOME_MESSAGE)
 
 
 if __name__ == "__main__":

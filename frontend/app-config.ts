@@ -34,24 +34,25 @@ export interface AppConfig {
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
   companyName: 'AgriAlert',
-  pageTitle: 'AgriAlert - Voice Agent Starter',
-  pageDescription: 'A voice agent powered by Murf Falcon — the fastest TTS API',
+  pageTitle: 'AgriAlert (कृषीअलर्ट) — तुमचा डिजिटल शेती मित्र',
+  pageDescription:
+    'AgriAlert — तुमचा डिजिटल शेती मित्र | Your Digital Farming Companion powered by Murf Falcon TTS',
 
   supportsChatInput: true,
-  supportsVideoInput: true,
-  supportsScreenShare: true,
+  supportsVideoInput: false,
+  supportsScreenShare: false,
   isPreConnectBufferEnabled: true,
 
   logo: '/murf-logo.svg',
-  accent: '#15803d',
+  accent: '#1B5E20',
   logoDark: '/murf-logo-dark.svg',
-  accentDark: '#22c55e',
-  startButtonText: 'Start talking',
+  accentDark: '#4CAF50',
+  startButtonText: '🎤 संवाद सुरू करा / Start Conversation',
 
   // optional: audio visualization configuration
   audioVisualizerType: 'wave',
-  audioVisualizerColor: '#15803d',
-  audioVisualizerColorDark: '#22c55e',
+  audioVisualizerColor: '#1B5E20',
+  audioVisualizerColorDark: '#4CAF50',
   audioVisualizerWaveLineWidth: 3,
 
   // agent dispatch configuration

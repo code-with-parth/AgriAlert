@@ -101,11 +101,71 @@ export function Fade({ top = false, bottom = false, className }: FadeProps) {
   );
 }
 
+/**
+ * Agent state indicator banner — shows bilingual state labels with animations
+ */
+function AgentStateIndicator({ agentState }: { agentState: string }) {
+  const stateConfig: Record<
+    string,
+    { label: string; badgeClass: string; icon: React.ReactNode }
+  > = {
+    listening: {
+      label: '🎤 ऐकत आहे... / Listening...',
+      badgeClass: 'agri-state-badge agri-state-badge--listening',
+      icon: (
+        <span className="agri-mic-pulse inline-block size-3 rounded-full bg-current" />
+      ),
+    },
+    speaking: {
+      label: '🔊 AgriAlert बोलत आहे... / Agent Speaking...',
+      badgeClass: 'agri-state-badge agri-state-badge--speaking',
+      icon: (
+        <span className="inline-flex items-end gap-[2px]">
+          <span className="agri-speaker-bar inline-block h-2 w-[3px] rounded-sm bg-current" />
+          <span className="agri-speaker-bar inline-block h-3 w-[3px] rounded-sm bg-current" />
+          <span className="agri-speaker-bar inline-block h-2 w-[3px] rounded-sm bg-current" />
+          <span className="agri-speaker-bar inline-block h-4 w-[3px] rounded-sm bg-current" />
+        </span>
+      ),
+    },
+    thinking: {
+      label: '💭 विचार करत आहे... / Thinking...',
+      badgeClass: 'agri-state-badge agri-state-badge--connecting',
+      icon: <span className="agri-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />,
+    },
+    connecting: {
+      label: '⏳ जोडत आहे... / Connecting...',
+      badgeClass: 'agri-state-badge agri-state-badge--connecting',
+      icon: <span className="agri-spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />,
+    },
+  };
+
+  const config = stateConfig[agentState] ?? stateConfig['listening'];
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={agentState}
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 10 }}
+        transition={{ duration: 0.3, ease: 'easeOut' }}
+        className="pointer-events-none fixed top-16 left-1/2 z-[60] -translate-x-1/2 md:top-20"
+      >
+        <div className={config.badgeClass}>
+          {config.icon}
+          {config.label}
+        </div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
+
 export interface AgentSessionView_01Props {
   /**
    * Message shown above the controls before the first chat message is sent.
    *
-   * @default 'Agent is listening, ask it a question'
+   * @default 'ऐकत आहे, तुमचा प्रश्न विचारा / Listening, ask your question'
    */
   preConnectMessage?: string;
   /**
@@ -156,7 +216,7 @@ export interface AgentSessionView_01Props {
 }
 
 export function AgentSessionView_01({
-  preConnectMessage = 'Agent is listening, ask it a question',
+  preConnectMessage = 'ऐकत आहे, तुमचा प्रश्न विचारा / Listening, ask your question',
   supportsChatInput = true,
   supportsVideoInput = true,
   supportsScreenShare = true,
@@ -181,6 +241,9 @@ export function AgentSessionView_01({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { state: agentState } = useAgent();
 
+  // Always show transcript (auto-open)
+  const showTranscript = messages.length > 0 || chatOpen;
+
   const controls: AgentControlBarControls = {
     leave: true,
     microphone: true,
@@ -204,12 +267,16 @@ export function AgentSessionView_01({
       className={cn('bg-background relative z-10 h-full w-full overflow-hidden', className)}
       {...props}
     >
-      <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
-      {/* transcript */}
+      {/* Agent State Indicator */}
+      <AgentStateIndicator agentState={agentState} />
 
+      <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
+
+      {/* Always-visible transcript area */}
       <div className="absolute top-0 bottom-[135px] flex w-full flex-col md:bottom-[170px]">
+        {/* Transcript always shown when messages exist */}
         <AnimatePresence>
-          {chatOpen && (
+          {showTranscript && (
             <motion.div
               {...CHAT_MOTION_PROPS}
               className="flex h-full w-full flex-col gap-4 space-y-3 transition-opacity duration-300 ease-out"
@@ -217,15 +284,16 @@ export function AgentSessionView_01({
               <AgentChatTranscript
                 agentState={agentState}
                 messages={messages}
-                className="mx-auto w-full max-w-2xl [&_.is-user>div]:rounded-[22px] [&>div>div]:px-4 [&>div>div]:pt-40 md:[&>div>div]:px-6"
+                className="agri-transcript-scroll mx-auto w-full max-w-2xl [&_.is-user>div]:rounded-[22px] [&>div>div]:px-4 [&>div>div]:pt-40 md:[&>div>div]:px-6"
               />
             </motion.div>
           )}
         </AnimatePresence>
       </div>
+
       {/* Tile layout */}
       <TileLayout
-        chatOpen={chatOpen}
+        chatOpen={chatOpen || showTranscript}
         audioVisualizerType={audioVisualizerType}
         audioVisualizerColor={audioVisualizerColor}
         audioVisualizerColorShift={audioVisualizerColorShift}
@@ -236,6 +304,7 @@ export function AgentSessionView_01({
         audioVisualizerGridColumnCount={audioVisualizerGridColumnCount}
         audioVisualizerWaveLineWidth={audioVisualizerWaveLineWidth}
       />
+
       {/* Bottom */}
       <motion.div
         {...BOTTOM_VIEW_MOTION_PROPS}
