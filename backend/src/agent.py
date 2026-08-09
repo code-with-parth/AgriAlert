@@ -9,6 +9,7 @@
 # Day 1 — Starter setup with Murf Falcon TTS, Pooja voice (Marathi).
 # Day 2 — Structured system prompt with identity, objectives, knowledge,
 #          language rules, guardrails, and TTS-friendly style.
+# Day 4 — Caller Memory with SQLite Database, Multilocale STT, Devanagari rules.
 # =============================================================================
 
 import logging
@@ -19,6 +20,8 @@ if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8")
     sys.stderr.reconfigure(encoding="utf-8")
 
+import json
+
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -28,12 +31,15 @@ from livekit.agents import (
     JobContext,
     JobProcess,
     cli,
-    inference,
-    tokenize,
     room_io,
+    tokenize,
+    function_tool,
+    RunContext,
 )
-from livekit.plugins import murf, silero, google, deepgram, noise_cancellation
+from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+import db
 
 logger = logging.getLogger("agent")
 
@@ -73,6 +79,20 @@ STYLE:
 मध्यम आणि मैत्रीपूर्ण वेगाने बोल.
 बुलेट पॉइंट्स, ब्रॅकेट्स, तारांकित चिन्हे, किंवा मार्कडाउन फॉरमॅटिंग वापरू नकोस.
 कारण तुझे बोलणे Text-to-Speech इंजिनने मोठ्याने वाचले जाईल.
+
+MEMORY:
+- At the start of every conversation, automatically call `lookup_caller` using the provided user ID to see if we've spoken before.
+- If they are a returning caller, warmly greet them by name and mention past context (like their crop, district, or land size). Example: "नमस्ते [Name], मागच्या वेळी आपण तुमच्या [Crop] बद्दल बोललो होतो..."
+- Always update your knowledge of the caller by calling `save_caller_info` when new information is shared.
+
+CONSENT (CRITICAL):
+- You MUST explicitly ask for the caller's permission before saving any personal or farm details (like name, location, crops).
+- Ask politely: "पुढच्या वेळी मदतीसाठी, मी तुमची माहिती (जसे की पिकाचे नाव, गाव) लक्षात ठेवू का?" (Can I remember your details for next time?)
+- If the caller says NO, you MUST NOT call `save_caller_info`.
+- Only call `save_caller_info` if they explicitly agree (e.g., "हो", "चालेल").
+
+LANGUAGE & SCRIPT:
+Always write Marathi in its native Devanagari script (e.g., नमस्ते). Never output romanized Marathi (never 'namaste').
 """
 
 # First-turn greeting spoken aloud when the agent connects to a session.
@@ -83,27 +103,52 @@ WELCOME_MESSAGE = (
 )
 
 
-
 class Assistant(Agent):
     def __init__(self) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
 
-    # To add tools, use the @function_tool decorator.
-    # Here's an example that adds a simple weather tool.
-    # You also have to add `from livekit.agents import function_tool, RunContext` to the top of this file
-    # @function_tool
-    # async def lookup_weather(self, context: RunContext, location: str):
-    #     """Use this tool to look up current weather information in the given location.
-    #
-    #     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.
-    #
-    #     Args:
-    #         location: The location to look up weather information for (e.g. city name)
-    #     """
-    #
-    #     logger.info(f"Looking up weather for {location}")
-    #
-    #     return "sunny with a temperature of 70 degrees."
+    @function_tool
+    async def lookup_caller(self, context: RunContext, user_id: str) -> str:
+        """Use this tool to look up if the caller has spoken to you before.
+
+        Args:
+            user_id: The unique identifier for the caller (phone number or SIP URI).
+        """
+        logger.info(f"Looking up caller with ID: {user_id}")
+        data = db.get_caller(db.DEFAULT_DB_PATH, user_id)
+        if data is None:
+            return "No previous record found for this caller."
+        return f"Caller found: {json.dumps(data, ensure_ascii=False)}"
+
+    @function_tool
+    async def save_caller_info(
+        self,
+        context: RunContext,
+        user_id: str,
+        name: str,
+        language_preference: str,
+        facts: str,
+    ) -> str:
+        """Use this tool to save or update the caller's information.
+
+        ONLY call this AFTER receiving explicit consent from the user to save their data.
+
+        Args:
+            user_id: The unique identifier for the caller.
+            name: The caller's name.
+            language_preference: The language preference (e.g., "mr").
+            facts: A JSON string containing farm-specific data (e.g., crops, land_size, district, irrigation_type).
+        """
+        logger.info(f"Saving info for caller ID: {user_id}")
+        try:
+            facts_dict = json.loads(facts) if facts else {}
+        except json.JSONDecodeError:
+            facts_dict = {}
+
+        data = db.upsert_caller(
+            db.DEFAULT_DB_PATH, user_id, name, language_preference, facts_dict
+        )
+        return f"Caller info saved successfully. Current data: {json.dumps(data, ensure_ascii=False)}"
 
 
 server = AgentServer()
@@ -111,6 +156,8 @@ server = AgentServer()
 
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
+    # Initialize the SQLite database before starting any sessions
+    db.init_db()
 
 
 server.setup_fnc = prewarm
@@ -128,22 +175,22 @@ async def my_agent(ctx: JobContext):
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=deepgram.STT(model="nova-3", language="mr"),
+        stt=deepgram.STT(model="nova-3", language="multi"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=google.LLM(
-                model="gemini-3.5-flash-lite",
-            ),
+            model="gemini-3.5-flash-lite",
+        ),
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # Configured to use Murf Falcon model with Pooja voice (Marathi) for the Farm & Field track
         tts=murf.TTS(
-                model="falcon",
-                voice="Pooja",
-                locale="mr-IN",
-                style="Conversation",
-                tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
-                text_pacing=True
-            ),
+            model="falcon",
+            voice="Pooja",
+            locale="mr-IN",
+            style="Conversation",
+            tokenizer=tokenize.basic.SentenceTokenizer(min_sentence_len=2),
+            text_pacing=True,
+        ),
         # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
