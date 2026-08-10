@@ -2,8 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, type MotionProps, motion } from 'motion/react';
-import { useAgent, useSessionContext, useSessionMessages } from '@livekit/components-react';
+import { useAgent, useSessionContext, useSessionMessages, useDataChannel } from '@livekit/components-react';
 import { AgentChatTranscript } from '@/components/agents-ui/agent-chat-transcript';
+import { LiveDataCard, type LiveDataPayload } from '@/components/agents-ui/live-data-card';
 import {
   AgentControlBar,
   type AgentControlBarControls,
@@ -237,7 +238,9 @@ export function AgentSessionView_01({
 }: React.ComponentProps<'section'> & AgentSessionView_01Props) {
   const session = useSessionContext();
   const { messages } = useSessionMessages(session);
+  const { message: dataMessage } = useDataChannel();
   const [chatOpen, setChatOpen] = useState(false);
+  const [liveData, setLiveData] = useState<LiveDataPayload | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { state: agentState } = useAgent();
 
@@ -261,6 +264,19 @@ export function AgentSessionView_01({
     }
   }, [messages]);
 
+  useEffect(() => {
+    if (!dataMessage) return;
+    try {
+      const decoded = new TextDecoder().decode(dataMessage.payload);
+      const parsed = JSON.parse(decoded);
+      if (parsed.type === 'live_data') {
+        setLiveData(parsed.data);
+      }
+    } catch (e) {
+      console.error('Failed to parse data message', e);
+    }
+  }, [dataMessage]);
+
   return (
     <section
       ref={ref}
@@ -269,6 +285,9 @@ export function AgentSessionView_01({
     >
       {/* Agent State Indicator */}
       <AgentStateIndicator agentState={agentState} />
+
+      {/* Live Data Card overlay */}
+      <LiveDataCard data={liveData} />
 
       <Fade top className="absolute inset-x-4 top-0 z-10 h-40" />
 

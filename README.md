@@ -2,6 +2,11 @@
 
 AgriAlert is a digital voice AI assistant built for the Farm & Field track. It helps Indian farmers with crop management, weather information, mandi prices, and agricultural advisory using real-time voice interactions in Marathi. Powered by Murf Falcon and LiveKit.
 
+**Day 5 Updates:**
+- 🌤️ **Live Weather Integration**: Uses the Open-Meteo API to fetch real-time weather forecasts based on the user's district.
+- 🌾 **Mandi Price Fetching**: Fetches up-to-date crop market prices for the user's district (currently using mock data).
+- 📲 **Real-time UI**: Data fetched by the voice agent is beamed to the frontend UI via LiveKit DataChannels in real time!
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![Murf Falcon](https://img.shields.io/badge/TTS-Murf%20Falcon-6366F1)](https://murf.ai/api/docs/text-to-speech/streaming) [![LiveKit](https://img.shields.io/badge/Transport-LiveKit-002cf2)](https://docs.livekit.io) [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?logo=typescript&logoColor=white)](https://www.typescriptlang.org/) [![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 
 ---

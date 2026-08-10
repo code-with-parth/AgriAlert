@@ -21,7 +21,9 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8")
 
 import json
+from datetime import datetime
 
+import aiohttp
 from dotenv import load_dotenv
 from livekit import rtc
 from livekit.agents import (
@@ -30,11 +32,11 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    RunContext,
     cli,
+    function_tool,
     room_io,
     tokenize,
-    function_tool,
-    RunContext,
 )
 from livekit.plugins import deepgram, google, murf, noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -80,16 +82,21 @@ STYLE:
 बुलेट पॉइंट्स, ब्रॅकेट्स, तारांकित चिन्हे, किंवा मार्कडाउन फॉरमॅटिंग वापरू नकोस.
 कारण तुझे बोलणे Text-to-Speech इंजिनने मोठ्याने वाचले जाईल.
 
-MEMORY:
-- At the start of every conversation, automatically call `lookup_caller` using the provided user ID to see if we've spoken before.
+MEMORY & CONTEXT:
+- At the start of every conversation, automatically call `lookup_caller` to see if we've spoken before.
 - If they are a returning caller, warmly greet them by name and mention past context (like their crop, district, or land size). Example: "नमस्ते [Name], मागच्या वेळी आपण तुमच्या [Crop] बद्दल बोललो होतो..."
 - Always update your knowledge of the caller by calling `save_caller_info` when new information is shared.
+- TOOL CHAINING: When a user asks for prices or weather, silently use the `lookup_caller` tool to retrieve their saved district and crop. Feed those directly into the `get_mandi_price_and_weather` tool without asking the user for their district or crop again.
 
 CONSENT (CRITICAL):
 - You MUST explicitly ask for the caller's permission before saving any personal or farm details (like name, location, crops).
 - Ask politely: "पुढच्या वेळी मदतीसाठी, मी तुमची माहिती (जसे की पिकाचे नाव, गाव) लक्षात ठेवू का?" (Can I remember your details for next time?)
 - If the caller says NO, you MUST NOT call `save_caller_info`.
 - Only call `save_caller_info` if they explicitly agree (e.g., "हो", "चालेल").
+
+DATA & ERRORS:
+- Always speak the date of the data out loud (e.g., 'आजच्या तारखेनुसार...').
+- HANDLING ERRORS OUT LOUD: If the tool returns 'DATA_SOURCE_UNAVAILABLE', politely inform the user in Marathi that the server is currently down and ask them to try again later. Do not go silent or hallucinate a price. Example: "माफ करा, सध्या सर्व्हर काम करत नाहीये, थोड्या वेळाने पुन्हा प्रयत्न करा."
 
 LANGUAGE & SCRIPT:
 Always write Marathi in its native Devanagari script (e.g., नमस्ते). Never output romanized Marathi (never 'namaste').
@@ -104,16 +111,16 @@ WELCOME_MESSAGE = (
 
 
 class Assistant(Agent):
-    def __init__(self) -> None:
+    def __init__(self, ctx: JobContext) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
+        self.ctx = ctx
 
     @function_tool
-    async def lookup_caller(self, context: RunContext, user_id: str) -> str:
-        """Use this tool to look up if the caller has spoken to you before.
+    async def lookup_caller(self, context: RunContext) -> str:
+        """Use this tool to look up if the caller has spoken to you before."""
+        participants = list(self.ctx.room.remote_participants.values())
+        user_id = participants[0].identity if participants else "unknown_user"
 
-        Args:
-            user_id: The unique identifier for the caller (phone number or SIP URI).
-        """
         logger.info(f"Looking up caller with ID: {user_id}")
         data = db.get_caller(db.DEFAULT_DB_PATH, user_id)
         if data is None:
@@ -124,7 +131,6 @@ class Assistant(Agent):
     async def save_caller_info(
         self,
         context: RunContext,
-        user_id: str,
         name: str,
         language_preference: str,
         facts: str,
@@ -134,11 +140,13 @@ class Assistant(Agent):
         ONLY call this AFTER receiving explicit consent from the user to save their data.
 
         Args:
-            user_id: The unique identifier for the caller.
             name: The caller's name.
             language_preference: The language preference (e.g., "mr").
             facts: A JSON string containing farm-specific data (e.g., crops, land_size, district, irrigation_type).
         """
+        participants = list(self.ctx.room.remote_participants.values())
+        user_id = participants[0].identity if participants else "unknown_user"
+
         logger.info(f"Saving info for caller ID: {user_id}")
         try:
             facts_dict = json.loads(facts) if facts else {}
@@ -149,6 +157,69 @@ class Assistant(Agent):
             db.DEFAULT_DB_PATH, user_id, name, language_preference, facts_dict
         )
         return f"Caller info saved successfully. Current data: {json.dumps(data, ensure_ascii=False)}"
+
+    @function_tool
+    async def get_mandi_price_and_weather(
+        self, context: RunContext, crop: str, district: str
+    ) -> str:
+        """Fetches current market (Mandi) prices and real-time weather forecasts for a specific agricultural district.
+
+        ONLY trigger this when the user asks for crop prices or weather.
+        Always use the caller's known crop and district context (from lookup_caller) silently without asking them.
+
+        Args:
+            crop: The name of the crop (e.g., 'wheat', 'soybean', 'cotton').
+            district: The agricultural district or location (e.g., 'Pune', 'Nashik').
+        """
+        logger.info(f"Fetching data for {crop} in {district}")
+
+        # MOCK MANDI DATA
+        mock_mandi = {
+            "wheat": {"Pune": "2500", "Nashik": "2600"},
+            "cotton": {"Pune": "7000", "Nashik": "7200"},
+            "soybean": {"Pune": "4500", "Nashik": "4400"},
+        }
+        price = mock_mandi.get(crop.lower(), {}).get(
+            district, "4000"
+        )  # default to 4000 if not found
+
+        # WEATHER API
+        # Simple mapping for demo (in production use real geocoding)
+        coords = {"Pune": (18.5204, 73.8567), "Nashik": (20.0110, 73.7903)}
+        lat, lon = coords.get(district, (18.5204, 73.8567))
+
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code"
+
+        try:
+            async with aiohttp.ClientSession() as http_session:
+                async with http_session.get(url, timeout=5) as response:
+                    if response.status != 200:
+                        raise Exception("API failed")
+                    data = await response.json()
+                    temp = data["current"]["temperature_2m"]
+
+                    date_str = datetime.now().strftime("%Y-%m-%d")
+
+                    # Emit UI Event over LiveKit
+                    ui_payload = {
+                        "type": "live_data",
+                        "data": {
+                            "crop": crop,
+                            "district": district,
+                            "price": price,
+                            "temperature": temp,
+                            "date": date_str,
+                        },
+                    }
+                    if self.ctx.room and self.ctx.room.local_participant:
+                        await self.ctx.room.local_participant.publish_data(
+                            json.dumps(ui_payload).encode("utf-8")
+                        )
+
+                    return f"Today's rate as of {date_str} for {crop} in {district} is {price} Rs/Quintal. The weather is {temp}°C."
+        except Exception as e:
+            logger.error(f"Failed to fetch data: {e}")
+            return "DATA_SOURCE_UNAVAILABLE"
 
 
 server = AgentServer()
@@ -220,7 +291,7 @@ async def my_agent(ctx: JobContext):
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
-        agent=Assistant(),
+        agent=Assistant(ctx),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
