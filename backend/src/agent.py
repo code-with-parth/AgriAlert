@@ -74,6 +74,7 @@ GUARDRAILS:
 पहिला नियम: कधीही मंडी भाव सध्याचा आहे असे सांगू नकोस. जर तुला स्रोत आणि तारीख माहित नसेल तर भाव सांगू नकोस.
 दुसरा नियम: विषारी रासायनिक कीटकनाशकांचे नाव सांगू नकोस. तज्ञांच्या पडताळणीशिवाय विशिष्ट कीटकनाशके सुचवू नकोस.
 तिसरा नियम एस्केलेशनसाठी आहे. जर शेतकऱ्याने अशा गंभीर पीक रोगाबद्दल विचारले जो तू ओळखू शकत नाहीस किंवा खूप क्लिष्ट प्रश्न आला तर नम्रपणे सांग की तू हे निदान करू शकत नाहीस. त्यांना त्यांच्या जवळच्या कृषी विज्ञान केंद्र म्हणजे KVK किंवा कृषी तज्ञांशी संपर्क करण्याचा सल्ला दे.
+चौथा नियम: जर शेतकऱ्याने "अलर्ट थांबवा" (Stop alerts) किंवा तत्सम काही म्हटले, तर त्यांना सांगा की त्यांची विनंती नोंदवली गेली आहे आणि त्यांना भविष्यात असे कॉल येणार नाहीत.
 
 STYLE:
 तुझी उत्तरे बोलण्यासाठी ट्यून केलेली असावीत, टेक्स्टसाठी नाही.
@@ -104,9 +105,9 @@ Always write Marathi in its native Devanagari script (e.g., नमस्ते).
 
 # First-turn greeting spoken aloud when the agent connects to a session.
 WELCOME_MESSAGE = (
-    "नमस्कार! मी AgriAlert, तुमचा शेतीतला डिजिटल मित्र. "
-    "आज शेतात काय मदत करू? "
-    "पीक, हवामान, खत, कीटक, कशाबद्दलही विचारा."
+    "नमस्कार, मी AgriAlert बोलत आहे. "
+    "तुमच्या जिल्ह्यात आज अवकाळी पावसाची शक्यता आहे, म्हणून सावध करण्यासाठी कॉल केला आहे. "
+    "जर तुम्हाला भविष्यात हे कॉल नको असतील, तर कृपया \"अलर्ट थांबवा\" सांगा."
 )
 
 
@@ -308,8 +309,34 @@ async def my_agent(ctx: JobContext):
     # Join the room and connect to the user
     await ctx.connect()
 
+    # Wait for the SIP participant to actually answer and publish audio
+    import asyncio
+    has_audio = False
+    for p in ctx.room.remote_participants.values():
+        for pub in p.track_publications.values():
+            if pub.kind == rtc.TrackKind.KIND_AUDIO and pub.subscribed:
+                has_audio = True
+                break
+                
+    if not has_audio:
+        logger.info("Waiting for remote user to answer and stream audio...")
+        audio_subscribed = asyncio.Future()
+        
+        @ctx.room.on("track_subscribed")
+        def on_track_subscribed(track, publication, participant):
+            if track.kind == rtc.TrackKind.KIND_AUDIO:
+                if not audio_subscribed.done():
+                    audio_subscribed.set_result(True)
+                    
+        await audio_subscribed
+        logger.info("Remote audio subscribed! Call is connected.")
+
+    # Small delay to let the SIP media settle and avoid packet loss
+    await asyncio.sleep(2.5)
+
     # Speak the welcome greeting aloud once connected
-    await session.say(WELCOME_MESSAGE)
+    # allow_interruptions=False ensures initial SIP line noise doesn't interrupt the agent
+    await session.say(WELCOME_MESSAGE, allow_interruptions=False)
 
 
 if __name__ == "__main__":
