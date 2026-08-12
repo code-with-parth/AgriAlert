@@ -7,6 +7,7 @@
 
 import json
 import os
+import random
 import sqlite3
 from datetime import datetime, timezone
 
@@ -19,7 +20,7 @@ DEFAULT_DB_PATH = os.path.join(
 
 
 def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
-    """Create the callers table if it doesn't already exist."""
+    """Create the callers and escalations tables if they don't already exist."""
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     try:
@@ -31,6 +32,18 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
                 language_preference TEXT DEFAULT 'mr',
                 last_interaction    TEXT,
                 facts               TEXT DEFAULT '{}'
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS escalations (
+                ticket_id           TEXT PRIMARY KEY,
+                user_id             TEXT,
+                issue_summary       TEXT,
+                urgency_level       TEXT,
+                status              TEXT DEFAULT 'Open',
+                timestamp           TEXT
             )
             """
         )
@@ -143,5 +156,32 @@ def upsert_caller(
         except (json.JSONDecodeError, TypeError):
             data["facts"] = {}
         return data
+    finally:
+        conn.close()
+
+def create_escalation(
+    db_path: str,
+    user_id: str,
+    issue_summary: str,
+    urgency_level: str
+) -> str:
+    """Creates a new escalation ticket and returns the ticket_id."""
+    now = datetime.now(timezone.utc).isoformat()
+    ticket_id = f"AGRI-{random.randint(1000, 9999)}"
+    
+    if not os.path.exists(db_path):
+        init_db(db_path)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            INSERT INTO escalations
+                (ticket_id, user_id, issue_summary, urgency_level, status, timestamp)
+            VALUES (?, ?, ?, ?, 'Open', ?)
+            """,
+            (ticket_id, user_id, issue_summary, urgency_level, now),
+        )
+        conn.commit()
+        return ticket_id
     finally:
         conn.close()

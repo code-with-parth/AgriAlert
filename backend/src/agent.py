@@ -22,6 +22,7 @@ if sys.platform == "win32":
 
 import json
 from datetime import datetime
+import re
 
 import aiohttp
 from dotenv import load_dotenv
@@ -73,7 +74,9 @@ LANGUAGE:
 GUARDRAILS:
 पहिला नियम: कधीही मंडी भाव सध्याचा आहे असे सांगू नकोस. जर तुला स्रोत आणि तारीख माहित नसेल तर भाव सांगू नकोस.
 दुसरा नियम: विषारी रासायनिक कीटकनाशकांचे नाव सांगू नकोस. तज्ञांच्या पडताळणीशिवाय विशिष्ट कीटकनाशके सुचवू नकोस.
-तिसरा नियम एस्केलेशनसाठी आहे. जर शेतकऱ्याने अशा गंभीर पीक रोगाबद्दल विचारले जो तू ओळखू शकत नाहीस किंवा खूप क्लिष्ट प्रश्न आला तर नम्रपणे सांग की तू हे निदान करू शकत नाहीस. त्यांना त्यांच्या जवळच्या कृषी विज्ञान केंद्र म्हणजे KVK किंवा कृषी तज्ञांशी संपर्क करण्याचा सल्ला दे.
+तिसरा नियम (एस्केलेशन/Human Handoff): जर 1) शेतकऱ्याने अशा गंभीर पीक रोगाबद्दल विचारले जो तू ओळखू शकत नाहीस, किंवा 2) हवामान/मंडीची माहिती उपलब्ध नाही किंवा चुकीची आहे आणि शेतकरी खूप अस्वस्थ/त्रस्त (distressed) आहे, तरच 'escalate_to_human' टूल वापरा.
+परंतु हे टूल वापरण्यापूर्वी शेतकऱ्याची परवानगी घेणे अनिवार्य आहे. (Mandatory Consent). त्यांना नेहमी विचारा: 'मला ही माहिती आमच्या कृषी तज्ञांना द्यायची आहे. मी तुमची माहिती पुढे पाठवू का?'. जर शेतकऱ्याने 'नाही' म्हटले, तर एस्केलेट करू नका. जर त्यांनी 'हो' म्हटले, तरच टूल कॉल करा.
+जेव्हा टूल तुम्हाला तिकीट आयडी (ticket_id) देईल, तेव्हा शेतकऱ्याला स्पष्टपणे सांगा: 'तुमची तक्रार नोंदवली आहे, तुमचा तिकीट क्रमांक [ID] आहे. आमचे तज्ञ तुम्हाला लवकरच कॉल करतील.'
 चौथा नियम: जर शेतकऱ्याने "अलर्ट थांबवा" (Stop alerts) किंवा तत्सम काही म्हटले, तर त्यांना सांगा की त्यांची विनंती नोंदवली गेली आहे आणि त्यांना भविष्यात असे कॉल येणार नाहीत.
 
 STYLE:
@@ -221,6 +224,31 @@ class Assistant(Agent):
         except Exception as e:
             logger.error(f"Failed to fetch data: {e}")
             return "DATA_SOURCE_UNAVAILABLE"
+
+    @function_tool
+    async def escalate_to_human(
+        self, context: RunContext, issue_summary: str, urgency: str
+    ) -> str:
+        """Escalates an unresolved issue to a human expert.
+        
+        ONLY use this tool if the user reports a serious unidentifiable crop disease, OR if market/weather data is completely broken and the farmer is distressed.
+        You MUST ask for the caller's permission before calling this tool.
+
+        Args:
+            issue_summary: A brief summary of the farmer's problem.
+            urgency: The urgency level: 'Low', 'Medium', 'High', or 'Emergency'.
+        """
+        participants = list(self.ctx.room.remote_participants.values())
+        user_id = participants[0].identity if participants else "unknown_user"
+        
+        logger.info(f"Escalating issue for user ID: {user_id}")
+        
+        # Scrub sensitive data (e.g., 10 digit phone numbers, passwords)
+        safe_summary = re.sub(r'\b\d{10}\b', '[REDACTED PHONE]', issue_summary)
+        safe_summary = re.sub(r'(?i)password\s*[:=]?\s*\S+', 'password: [REDACTED]', safe_summary)
+        
+        ticket_id = db.create_escalation(db.DEFAULT_DB_PATH, user_id, safe_summary, urgency)
+        return f"Escalation successful. The ticket ID is {ticket_id}."
 
 
 server = AgentServer()
