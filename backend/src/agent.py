@@ -118,6 +118,7 @@ class Assistant(Agent):
     def __init__(self, ctx: JobContext) -> None:
         super().__init__(instructions=SYSTEM_PROMPT)
         self.ctx = ctx
+        self.call_outcome = "failed"
 
     @function_tool
     async def lookup_caller(self, context: RunContext) -> str:
@@ -176,6 +177,7 @@ class Assistant(Agent):
             district: The agricultural district or location (e.g., 'Pune', 'Nashik').
         """
         logger.info(f"Fetching data for {crop} in {district}")
+        self.call_outcome = "success"
 
         # MOCK MANDI DATA
         mock_mandi = {
@@ -275,7 +277,7 @@ async def my_agent(ctx: JobContext):
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt=deepgram.STT(model="nova-3", language="multi"),
+        stt=deepgram.STT(model="nova-3", language="mr"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
         llm=google.LLM(
@@ -319,8 +321,9 @@ async def my_agent(ctx: JobContext):
     # await avatar.start(session, room=ctx.room)
 
     # Start the session, which initializes the voice pipeline and warms up the models
+    assistant = Assistant(ctx)
     await session.start(
-        agent=Assistant(ctx),
+        agent=assistant,
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
@@ -336,6 +339,11 @@ async def my_agent(ctx: JobContext):
 
     # Join the room and connect to the user
     await ctx.connect()
+
+    @ctx.room.on("disconnected")
+    def on_disconnected(*args):
+        logger.info(f"Call disconnected. Saving analytics. Outcome: {assistant.call_outcome}")
+        db.save_call_analytics(db.DEFAULT_DB_PATH, ctx.room.name, assistant.call_outcome)
 
     # Wait for the SIP participant to actually answer and publish audio
     import asyncio

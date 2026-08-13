@@ -47,6 +47,15 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
             )
             """
         )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS call_analytics (
+                call_id             TEXT PRIMARY KEY,
+                timestamp           TEXT,
+                outcome             TEXT
+            )
+            """
+        )
         conn.commit()
     finally:
         conn.close()
@@ -183,5 +192,28 @@ def create_escalation(
         )
         conn.commit()
         return ticket_id
+    finally:
+        conn.close()
+
+def save_call_analytics(
+    db_path: str,
+    call_id: str,
+    outcome: str
+) -> None:
+    """Save call outcome for analytics. Does not store any PII."""
+    now = datetime.now(timezone.utc).isoformat()
+    if not os.path.exists(db_path):
+        init_db(db_path)
+    conn = sqlite3.connect(db_path)
+    try:
+        conn.execute(
+            """
+            INSERT INTO call_analytics
+                (call_id, timestamp, outcome)
+            VALUES (?, ?, ?)
+            """,
+            (call_id, now, outcome),
+        )
+        conn.commit()
     finally:
         conn.close()
