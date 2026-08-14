@@ -56,7 +56,7 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   audioVisualizerWaveLineWidth: 3,
 
   // agent dispatch configuration
-  agentName: process.env.AGENT_NAME ?? undefined,
+  agentName: undefined,
 
   // LiveKit Cloud Sandbox configuration
   sandboxId: undefined,

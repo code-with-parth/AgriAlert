@@ -74,10 +74,12 @@ LANGUAGE:
 GUARDRAILS:
 पहिला नियम: कधीही मंडी भाव सध्याचा आहे असे सांगू नकोस. जर तुला स्रोत आणि तारीख माहित नसेल तर भाव सांगू नकोस.
 दुसरा नियम: विषारी रासायनिक कीटकनाशकांचे नाव सांगू नकोस. तज्ञांच्या पडताळणीशिवाय विशिष्ट कीटकनाशके सुचवू नकोस.
-तिसरा नियम (एस्केलेशन/Human Handoff): जर 1) शेतकऱ्याने अशा गंभीर पीक रोगाबद्दल विचारले जो तू ओळखू शकत नाहीस, किंवा 2) हवामान/मंडीची माहिती उपलब्ध नाही किंवा चुकीची आहे आणि शेतकरी खूप अस्वस्थ/त्रस्त (distressed) आहे, तरच 'escalate_to_human' टूल वापरा.
+तुसरा नियम (एस्केलेशन/Human Handoff): जर 1) शेतकऱ्याने अशा गंभीर पीक रोगाबद्दल विचारले जो तू ओळखू शकत नाहीस, किंवा 2) हवामान/मंडीची माहिती उपलब्ध नाही किंवा चुकीची आहे आणि शेतकरी खूप अस्वस्थ/त्रस्त (distressed) आहे, तरच 'escalate_to_human' टूल वापरा.
 परंतु हे टूल वापरण्यापूर्वी शेतकऱ्याची परवानगी घेणे अनिवार्य आहे. (Mandatory Consent). त्यांना नेहमी विचारा: 'मला ही माहिती आमच्या कृषी तज्ञांना द्यायची आहे. मी तुमची माहिती पुढे पाठवू का?'. जर शेतकऱ्याने 'नाही' म्हटले, तर एस्केलेट करू नका. जर त्यांनी 'हो' म्हटले, तरच टूल कॉल करा.
 जेव्हा टूल तुम्हाला तिकीट आयडी (ticket_id) देईल, तेव्हा शेतकऱ्याला स्पष्टपणे सांगा: 'तुमची तक्रार नोंदवली आहे, तुमचा तिकीट क्रमांक [ID] आहे. आमचे तज्ञ तुम्हाला लवकरच कॉल करतील.'
 चौथा नियम: जर शेतकऱ्याने "अलर्ट थांबवा" (Stop alerts) किंवा तत्सम काही म्हटले, तर त्यांना सांगा की त्यांची विनंती नोंदवली गेली आहे आणि त्यांना भविष्यात असे कॉल येणार नाहीत.
+पाचवा नियम (Specialist Handoff): जर शेतकऱ्याने पिकांचे आजार, कीड नियंत्रण, किंवा मातीच्या आरोग्याविषयी अत्यंत सखोल आणि गुंतागुंतीचे प्रश्न विचारले जे मूलभूत माहितीच्या बाहेर आहेत, तर 'transfer_to_crop_specialist' टूल वापरा. 
+पण हे टूल वापरण्यापूर्वी शेतकऱ्याला स्पष्टपणे सांगा: 'मी तुम्हाला आमच्या कृषी तज्ञांशी जोडत आहे, कृपया एक क्षण थांबा.'
 
 STYLE:
 तुझी उत्तरे बोलण्यासाठी ट्यून केलेली असावीत, टेक्स्टसाठी नाही.
@@ -119,6 +121,7 @@ class Assistant(Agent):
         super().__init__(instructions=SYSTEM_PROMPT)
         self.ctx = ctx
         self.call_outcome = "failed"
+        self._handoff_done = False
 
     @function_tool
     async def lookup_caller(self, context: RunContext) -> str:
@@ -251,6 +254,84 @@ class Assistant(Agent):
         
         ticket_id = db.create_escalation(db.DEFAULT_DB_PATH, user_id, safe_summary, urgency)
         return f"Escalation successful. The ticket ID is {ticket_id}."
+
+    @function_tool
+    async def transfer_to_crop_specialist(self, context: RunContext, conversation_summary: str) -> str:
+        """Transfers the user to a Crop Specialist expert agent.
+        
+        ONLY trigger this when the user asks deep, complex questions about crop diseases, pest control, or soil health that go beyond basic alerts.
+        You MUST announce the transfer in Marathi before using this tool: 'मी तुम्हाला आमच्या कृषी तज्ञांशी जोडत आहे, कृपया एक क्षण थांबा.'
+        
+        Args:
+            conversation_summary: A brief summary of the user's problem and what you have discussed so far.
+        """
+        # Guard: only allow ONE dispatch ever
+        if self._handoff_done:
+            logger.warning("Handoff already initiated — ignoring duplicate tool call.")
+            return "Transfer already in progress."
+        self._handoff_done = True
+
+        participants = list(self.ctx.room.remote_participants.values())
+        user_id = participants[0].identity if participants else "unknown_user"
+        
+        logger.info(f"Transferring user {user_id} to crop specialist.")
+        
+        data = db.get_caller(db.DEFAULT_DB_PATH, user_id)
+        
+        metadata = {
+            "conversation_summary": conversation_summary,
+            "caller_data": data
+        }
+        
+        try:
+            from livekit import api
+            import os
+            
+            lkapi = api.LiveKitAPI(
+                os.getenv("LIVEKIT_URL"), 
+                os.getenv("LIVEKIT_API_KEY"), 
+                os.getenv("LIVEKIT_API_SECRET")
+            )
+            
+            await lkapi.agent_dispatch.create_dispatch(
+                api.CreateAgentDispatchRequest(
+                    room=self.ctx.room.name,
+                    agent_name="crop-specialist",
+                    metadata=json.dumps(metadata)
+                )
+            )
+            
+            # IMMEDIATELY lobotomize the main agent's LLM so it never generates
+            # another response. This takes effect before the tool even returns.
+            self.update_instructions(
+                "YOUR JOB IS DONE. You have transferred the user to a specialist. "
+                "DO NOT generate any more speech. DO NOT respond to the user. "
+                "If forced to produce output, emit a single space character and nothing else."
+            )
+            logger.info("Main agent LLM has been lobotomized via update_instructions.")
+
+            async def mute_audio():
+                import asyncio
+                # Short delay to let the already-queued TTS ("Transferring you...") finish playing
+                await asyncio.sleep(5)
+                
+                # Unpublish the audio track so nothing can be heard even if LLM leaks a token
+                try:
+                    for pub in list(self.ctx.room.local_participant.track_publications.values()):
+                        if pub.kind == rtc.TrackKind.KIND_AUDIO:
+                            await self.ctx.room.local_participant.unpublish_track(pub.sid)
+                    logger.info("Main agent audio track unpublished.")
+                except Exception as e:
+                    logger.warning(f"Could not unpublish audio track: {e}")
+
+            import asyncio
+            asyncio.create_task(mute_audio())
+            
+            return "Transfer initiated successfully."
+        except Exception as e:
+            logger.error(f"Failed to dispatch specialist: {e}")
+            return "Failed to transfer."
+
 
 
 server = AgentServer()
